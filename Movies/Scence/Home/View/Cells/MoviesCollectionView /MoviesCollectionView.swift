@@ -9,17 +9,14 @@ import UIKit
 class MoviesCollectionView: UICollectionViewCell {
     
     @IBOutlet weak var movieImageView: UIImageView!
-    @IBOutlet weak var movieNameLabel: UILabel!
-    @IBOutlet weak var movieYearLabel: UILabel!
-    
+    @IBOutlet weak var containerView: UIView!
     override func awakeFromNib() {
         super.awakeFromNib()
         
     }
     func setUpMoiveCell(with movie: Movie) {
-        movieNameLabel.text = movie.title
-        movieYearLabel.text = movie.releaseDate
         loadPoster(path: movie.posterPath)
+        movieImageView.layer.cornerRadius = 16
     }
     private func loadPoster(path: String?) {
         guard let path = path else {
@@ -30,7 +27,7 @@ class MoviesCollectionView: UICollectionViewCell {
         Task { [weak self] in
             guard let self = self else { return }
             let image = await ImageLoader.shared.loadImage(from: path)
-            await self.updateImages(image)
+             self.updateImages(image)
         }
     }
     @MainActor

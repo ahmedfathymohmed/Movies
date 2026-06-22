@@ -8,7 +8,6 @@
 import Foundation
 import Combine
 
-protocol NetworkManaging {
-    
+protocol Network {
     func request<T: Decodable>(url: URLRequest) -> AnyPublisher<T, Error>
 }

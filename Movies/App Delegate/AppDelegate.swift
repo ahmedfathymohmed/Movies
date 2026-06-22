@@ -9,24 +9,22 @@ import UIKit
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
-    
-    var window: UIWindow?
-    var coordinator: AppCoordinator?
 
-        func application(
-            _ application: UIApplication,
-            didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-        ) -> Bool {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        return true
+    }
 
-            let navController = UINavigationController()
-            coordinator = AppCoordinator(navigationController: navController)
-            coordinator?.start()
+    // الدالة دي هتربط الـ SceneDelegate برمجياً غصب عن أي إعدادات تانية
+    func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+        
+        let sceneConfig = UISceneConfiguration(name: nil, sessionRole: connectingSceneSession.role)
+        sceneConfig.delegateClass = SceneDelegate.self // ربط مباشر بكلاس الـ SceneDelegate
+        return sceneConfig
+    }
 
-            window = UIWindow(frame: UIScreen.main.bounds)
-            window?.rootViewController = navController
-            window?.makeKeyAndVisible()
-
-            return true
-        }
-    
+    func application(_ application: UIApplication, didDiscardSceneSessions sceneSessions: Set<UISceneSession>) {
+    }
 }

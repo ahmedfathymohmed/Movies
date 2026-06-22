@@ -1,170 +1,291 @@
-//
-//  DetailsViewController.swift
-//  Movies App Task
-//
-//  Created by Ahmed Fathy on 24/01/2026.
-
 import UIKit
 import Combine
 
 class DetailsViewController: UIViewController {
-    
+   
+    // MARK: - Properties
     var viewModel: DetailsViewModel?
     weak var coordinator: AppCoordinator?
     private var cancellables = Set<AnyCancellable>()
+    var isInWatchList = false
     
+    let tabs = ["About Movie", "Reviews", "Cast"]
+    var selectedIndex = 0
+    
+    private let tapsHandler = TapsCollectionViewHandler()
+    private let castHandler = CastCollectionViewHandler()
+    private let reviewsHandler = ReviewsTableViewHandler()
+    
+    // MARK: - Outlets
     @IBOutlet weak var contanierView: UIView!
     @IBOutlet weak var movieTitleLabel: UILabel!
-    @IBOutlet weak var releaseDateLabel: UILabel!
-    @IBOutlet weak var descriptionLabel: UILabel!
     @IBOutlet weak var selectedMovieImage: UIImageView!
+    @IBOutlet weak var selectedMovieSmallImage: UIImageView!
+    @IBOutlet weak var saveMarkImage: UIImageView!
+    @IBOutlet weak var saveMarkButton: UIButton!
+    @IBOutlet weak var backButton: UIButton!
     
-    @IBOutlet weak var selectedMovieSmallImge: UIImageView!
-    @IBOutlet weak var homepageLabel: UILabel!
-    @IBOutlet weak var languagesLabel: UILabel!
-    @IBOutlet weak var statusLabel: UILabel!
-    @IBOutlet weak var budgetLabel: UILabel!
-    @IBOutlet weak var runtimeLabel: UILabel!
-    @IBOutlet weak var revenueLabel: UILabel!
+    @IBOutlet weak var ratingImage: UIImageView!
+    @IBOutlet weak var ratingLabel: UILabel!
+    @IBOutlet weak var typeOfMovieImage: UIImageView!
+    @IBOutlet weak var typeOfMovieLabel: UILabel!
+    @IBOutlet weak var dateOfMovieImage: UIImageView!
+    @IBOutlet weak var dateOfMovieLabel: UILabel!
+    @IBOutlet weak var timeOfMovieImage: UIImageView!
+    @IBOutlet weak var timeOfMovieLabel: UILabel!
+    @IBOutlet weak var aboutMovieLabel: UILabel!
+    @IBOutlet weak var aboutMovieView: UIView!
+    @IBOutlet weak var reviewMovieView: UIView!
+    @IBOutlet weak var creditsMovieView: UIView!
+    @IBOutlet weak var tapsCollectionView: UICollectionView!
+    @IBOutlet weak var reviewMovieTableView: UITableView!
+    @IBOutlet weak var castCollectionView: UICollectionView!
     
-    @IBOutlet weak var homePageLabelValue: UILabel!
-    @IBOutlet weak var languagesLabelValue: UILabel!
-    @IBOutlet weak var budgetLabelValue: UILabel!
-    @IBOutlet weak var statusLabelValue: UILabel!
-    @IBOutlet weak var runtimeLabelValue: UILabel!
-    @IBOutlet weak var revenueLabelValue: UILabel!
-    @IBOutlet weak var backImageView: UIImageView!
+    @IBOutlet weak var ratingView: UIView!
+    @IBOutlet weak var loadingIndicator: UIActivityIndicatorView!
     
-    override func viewWillAppear(_ animated: Bool) {
-            super.viewWillAppear(animated)
-            navigationController?.setNavigationBarHidden(true, animated: false)
-        }
-
-        override func viewWillDisappear(_ animated: Bool) {
-            super.viewWillDisappear(animated)
-            navigationController?.setNavigationBarHidden(false, animated: false)
-        }
-
+    @IBOutlet weak var noReviewsLabel: UILabel!
+    
+    // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        setupTabsCollectionView()
+        setupReviewsTableView()
+        setupCastCollectionView()
+        showLoading()
+
+        showView(for: 0)
+        
         bindViewModel()
+        bindViewModelReview()
+        bindMovieCredits()
 
         viewModel?.fetchMoviesDetails()
-        
-        backImageView.image = UIImage(named: "back_1")
-        backImageView.tintColor = .white
-
+        backButton.setTitle("", for: .normal)
+        backButton.setImage(UIImage(systemName: "chevron.left"), for: .normal)
+        backButton.tintColor = .white
+        saveMarkImage.tintColor = .white
     }
-    private func updateUI(with movie: DetailResponse) {
-        setupStaticUI()
-        bindMovieData(movie)
-        loadPoster(path: movie.posterPath)
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: animated)
+    }
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.setNavigationBarHidden(false, animated: animated)
+    }
+    // MARK: - Show/Hide Views
+    func showView(for index: Int) {
+        aboutMovieView.isHidden   = (index != 0)
+        reviewMovieView.isHidden  = (index != 1)
+        creditsMovieView.isHidden = (index != 2)
+    }
+    // MARK: - Setups
+    private func setupTabsCollectionView() {
+        tapsCollectionView.delegate = tapsHandler
+        tapsCollectionView.dataSource = tapsHandler
+        tapsCollectionView.backgroundColor = .clear
+        tapsCollectionView.showsHorizontalScrollIndicator = false
+        tapsCollectionView.register(
+            UINib(nibName: "SelectedTapCell", bundle: nil),
+            forCellWithReuseIdentifier: "SelectedTapCell"
+        )
+        tapsHandler.onTabSelected = { [weak self] index in
+            guard let self = self else { return }
+            self.showView(for: index)
+            if index == 1 {
+                self.viewModel?.fetchMovieReviews()
+            }
+            if index == 2 {
+                self.viewModel?.fetchMovieCredits()
+            }
+        }
     }
     
+    private func setupReviewsTableView() {
+        reviewMovieTableView.delegate = reviewsHandler
+        reviewMovieTableView.dataSource = reviewsHandler
+        reviewMovieTableView.register(
+            UINib(nibName: "MovieReviewsCell", bundle: nil),
+            forCellReuseIdentifier: "MovieReviewsCell"
+        )
+    }
+    private func setupCastCollectionView() {
+        castCollectionView.delegate = castHandler
+        castCollectionView.dataSource = castHandler
+        castCollectionView.backgroundColor = .clear
+        castCollectionView.showsHorizontalScrollIndicator = false
+        castCollectionView.register(
+            UINib(nibName: "CastCell", bundle: nil),
+            forCellWithReuseIdentifier: "CastCell"
+        )
+    }
+    
+    // MARK: - Binding
     private func bindViewModel() {
         viewModel?.$detailResponse
             .receive(on: DispatchQueue.main)
             .sink { [weak self] response in
                 guard let movie = response else { return }
                 self?.updateUI(with: movie)
+                self?.hideLoading()
             }
             .store(in: &cancellables)
         
         viewModel?.$errorMessage
             .receive(on: DispatchQueue.main)
             .sink { error in
-                if let error = error {
-                    print(" Error: \(error)")
-                }
+                if let error = error { print("Error: \(error)") }
+                self.hideLoading()
             }
             .store(in: &cancellables)
     }
     
-    private func setupStaticUI() {
-        contanierView.backgroundColor = .black
+    private func bindViewModelReview() {
+        viewModel?.$reviews
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] reviews in
+                guard let self = self else { return }
         
-        homepageLabel.text = "Homepage"
-        languagesLabel.text = "Language"
-        statusLabel.text = "Status"
-        budgetLabel.text = "Budget"
-        runtimeLabel.text = "Runtime"
-        revenueLabel.text = "Revenue"
-        
-        let labels = [
-            homepageLabel,
-            languagesLabel,
-            statusLabel,
-            budgetLabel,
-            runtimeLabel,
-            revenueLabel
-        ]
-        
-        labels.forEach {
-            $0?.font = .systemFont(ofSize: 15, weight: .bold)
-            $0?.textColor = .white
+                self.reviewsHandler.reviews = reviews
+                self.reviewMovieTableView.reloadData()
+                
+                self.noReviewsLabel.isHidden = !reviews.isEmpty
+                self.reviewMovieTableView.isHidden = reviews.isEmpty
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func bindMovieCredits() {
+        viewModel?.$cast
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] cast in
+                guard let self = self else { return }
+                self.castHandler.cast = cast
+                self.castCollectionView.reloadData()
+            }
+            .store(in: &cancellables)
+    }
+    private func showLoading() {
+        loadingIndicator.startAnimating()
+        contanierView.alpha = 0.5
+    }
+
+    private func hideLoading() {
+        loadingIndicator.stopAnimating()
+        UIView.animate(withDuration: 0.0) {
+            self.contanierView.alpha = 1
         }
     }
+    
+    // MARK: - UI Updates
+    private func updateUI(with movie: DetailResponse) {
+        bindMovieData(movie)
+        isInWatchList = WatchListStorage().getMovies().contains { $0.id == movie.id }
+        updateButton()
+    }
+    
     
     private func bindMovieData(_ movie: DetailResponse) {
+        contanierView.backgroundColor = UIColor(hex: "#242A32")
         movieTitleLabel.text = movie.title ?? "N/A"
-        movieTitleLabel.font = .systemFont(ofSize: 18, weight: .bold)
+        movieTitleLabel.font = .systemFont(ofSize: 20, weight: .bold)
         movieTitleLabel.textColor = .white
         
-        releaseDateLabel.text = movie.releaseDate ?? "N/A"
-        releaseDateLabel.font = .systemFont(ofSize: 15)
-        releaseDateLabel.textColor = .white
         
-        descriptionLabel.text = movie.overview ?? "No description available"
-        descriptionLabel.font = .systemFont(ofSize: 16, weight: .medium)
-        descriptionLabel.textColor = .white
+        ratingLabel.text = String(format: "%.1f", movie.voteAverage ?? 0.0)
+        ratingLabel.textColor = UIColor(hex: "#FF8700")
+        ratingLabel.font = .systemFont(ofSize: 12, weight: .semibold)
+        ratingLabel.layer.borderColor = UIColor(hex: "#FF8700").cgColor
+        ratingView.backgroundColor = UIColor(hex: "#252836").withAlphaComponent(0.5)
+        ratingView.layer.cornerRadius = 8
+        ratingImage.image = UIImage(named: "Star")?.withRenderingMode(.alwaysTemplate)
+        ratingImage.tintColor = UIColor(hex: "#FF8700")
+
+        typeOfMovieImage.image = UIImage(named: "Ticket")
+        timeOfMovieImage.image = UIImage(named: "Clock")
+        dateOfMovieImage.image = UIImage(named: "CalendarBlank")
+        typeOfMovieLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        typeOfMovieLabel.textColor = .white
+        dateOfMovieLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        dateOfMovieLabel.textColor = .white
+        timeOfMovieLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        timeOfMovieLabel.textColor = .white
+        typeOfMovieLabel.text = movie.genres?.first?.name ?? "Unknown"
+        dateOfMovieLabel.text = movie.releaseDate ?? "N/A"
+        timeOfMovieLabel.text = "\(movie.runtime ?? 0) mins"
         
-        homePageLabelValue.text = movie.homepage ?? "N/A"
-        homePageLabelValue.font = .systemFont(ofSize: 12, weight: .regular)
-        homePageLabelValue.textColor = .blue
+        if let overview = movie.overview, !overview.isEmpty {
+            aboutMovieLabel.text = overview
+        } else {
+            aboutMovieLabel.text = "No description available for this movie yet"
+        }
+        aboutMovieLabel.font = .systemFont(ofSize: 14, weight: .medium)
+        aboutMovieLabel.textColor = .white
         
-        languagesLabelValue.text = movie.spokenLanguages?.first?.englishName ?? "Unknown"
-        languagesLabelValue.font = .systemFont(ofSize: 12, weight: .regular)
-        languagesLabelValue.textColor = .white
+        selectedMovieSmallImage.layer.cornerRadius = 10
+        selectedMovieSmallImage.layer.borderColor = UIColor.orange.cgColor
+        selectedMovieSmallImage.layer.borderWidth = 1
         
-        statusLabelValue.text = movie.status ?? "N/A"
-        statusLabelValue.font = .systemFont(ofSize: 12, weight: .regular)
-        statusLabelValue.textColor = .white
+        noReviewsLabel.text = "No reviews yet for this movie."
+        noReviewsLabel.textColor = .white
+        noReviewsLabel.font = .systemFont(ofSize: 14, weight: .medium)
+
         
-        budgetLabelValue.text = "$\(movie.budget ?? 0)"
-        budgetLabelValue.font = .systemFont(ofSize: 12, weight: .regular)
-        budgetLabelValue.textColor = .white
-        
-        revenueLabelValue.text = "$\(movie.revenue ?? 0)"
-        revenueLabelValue.font = .systemFont(ofSize: 12, weight: .regular)
-        revenueLabelValue.textColor = .white
-        
-        runtimeLabelValue.text = "\(movie.runtime ?? 0) min"
-        runtimeLabelValue.font = .systemFont(ofSize: 12, weight: .regular)
-        runtimeLabelValue.textColor = .white
-    }
-    
-    
-    private func loadPoster(path: String?) {
-        guard let path = path else {
-            selectedMovieImage.image = UIImage(named: "placeholder")
-            selectedMovieSmallImge.image = UIImage(named: "placeholder")
+        guard let posterPath = movie.posterPath, !posterPath.isEmpty else {
+            self.selectedMovieImage.image = UIImage(named: "placeholder")
+            self.selectedMovieSmallImage?.image = UIImage(named: "placeholder")
             return
         }
-        
-        Task { [weak self] in
-            guard let self = self else { return }
-            let image = await ImageLoader.shared.loadImage(from: path)
-            await self.updateImages(image)
+        Task {
+            if let downloadedImage = await ImageLoader.shared.loadImage(from: posterPath) {
+                await MainActor.run {
+                    self.selectedMovieImage.image = downloadedImage
+                    self.selectedMovieSmallImage?.image = downloadedImage
+                }
+            } else {
+                await MainActor.run {
+                    self.selectedMovieImage.image = UIImage(named: "placeholder")
+                    self.selectedMovieSmallImage?.image = UIImage(named: "placeholder")
+                }
+            }
         }
     }
-    
-    @MainActor
-    private func updateImages(_ image: UIImage?) {
-        selectedMovieImage.image = image
-        selectedMovieSmallImge.image = image
+    func updateButton() {
+        let imageName = isInWatchList ? "bookmark.fill" : "bookmark"
+        saveMarkImage.image = UIImage(systemName: imageName)
+        saveMarkImage.tintColor = isInWatchList ? UIColor(hex: "#0296E5") : .white
     }
     
+    // MARK: - Actions
     @IBAction func backButtonPressed(_ sender: UIButton) {
-        coordinator?.goBack()
+        self.navigationController?.popViewController(animated: true)
+    }
+    
+    @IBAction func saveMarkButton(_ sender: UIButton) {
+        isInWatchList.toggle()
+
+        guard let movie = viewModel?.detailResponse,
+              let id = movie.id else { return }
+        let year = String(movie.releaseDate?.prefix(4) ?? "")
+        let duration = "\(movie.runtime ?? 0) minutes"
+        let genre = movie.genres?.first?.name ?? "Unknown"
+        let watchMovie = WatchListModel(
+            id: id,
+            title: movie.title ?? "",
+            posterPath: movie.posterPath ?? "",
+            rating: movie.voteAverage ?? 0,
+            genre: genre,
+            year: year,
+            duration: duration
+        )
+        if isInWatchList {
+            WatchListStorage().save(movie: watchMovie)
+        } else {
+            WatchListStorage().remove(movieId: watchMovie.id)
+        }
+        updateButton()
     }
 }

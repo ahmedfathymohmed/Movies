@@ -11,16 +11,16 @@ class HomeViewModel {
     // MARK: - Data Sources
     private let categoriesDataSource = ["Popular", "Now Playing", "Upcoming", "Top Rated"]
     private var cancellables = Set<AnyCancellable>()
+    private var searchCancellable: AnyCancellable?
     
     @Published var movies: [Movie] = []
-    @Published var filteredMovies: [Movie] = []
+    @Published var displayedMovies: [Movie] = []
     @Published var errorMessage: String?
     
     func fetchMovies(for category: String) {
-        
         let endpoint: MovieEndpoint
-        
         switch category {
+            
         case "Popular":
             endpoint = .popular
         case "Now Playing":
@@ -37,9 +37,7 @@ class HomeViewModel {
     }
     // MARK: - API
     func fetchMovies(endpoint: MovieEndpoint) {
-        
         guard let request = APIBuilder.buildRequest(endpoint: endpoint) else { return }
-        
         NetworkManager.shared.request(url: request)
             .sink { completion in
                 if case let .failure(error) = completion {
@@ -47,21 +45,31 @@ class HomeViewModel {
                 }
             } receiveValue: { [weak self] (response: MoviesResponse) in
                 self?.movies = response.results
-                self?.filteredMovies = response.results
+                self?.displayedMovies = response.results
             }
             .store(in: &cancellables)
     }
-    
-    func filterMovies(text: String) {
-        if text.isEmpty {
-            filteredMovies = movies
-        } else {
-            filteredMovies = movies.filter {
-                $0.title.lowercased().contains(text.lowercased())
-            }
+    private func handleSearch(_ text: String) {
+        
+        let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        guard !query.isEmpty else {
+            movies = displayedMovies
+            return
+        }
+        movies = displayedMovies.filter {
+            $0.title.lowercased().contains(query.lowercased())
         }
     }
-    
+    func bindSearch(textPublisher: AnyPublisher<String, Never>) {
+        textPublisher
+            .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
+            .removeDuplicates()
+            .sink { [weak self] text in
+                self?.handleSearch(text)
+            }
+            .store(in: &cancellables)
+    }
     func getCategoriesCount() -> Int {
         return categoriesDataSource.count
     }
@@ -70,11 +78,11 @@ class HomeViewModel {
     }
     
     func getMovieCount() -> Int {
-        return filteredMovies.count
+        return movies.count
     }
-    
+
     func getMovie(at index: Int) -> Movie {
-        return filteredMovies[index]
+        return movies[index]
     }
     
 }

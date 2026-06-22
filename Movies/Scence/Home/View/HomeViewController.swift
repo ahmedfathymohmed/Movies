@@ -11,8 +11,8 @@ import Combine
 class HomeViewController: UIViewController , UICollectionViewDelegateFlowLayout{
     
     private var cancellables = Set<AnyCancellable>()
+    private let searchSubject = PassthroughSubject<String, Never>()
     private let ViewModel = HomeViewModel()
-    weak var coordinator: AppCoordinator?
     private var movies: [Movie] = []
     
     // MARK: - Outlets
@@ -24,41 +24,104 @@ class HomeViewController: UIViewController , UICollectionViewDelegateFlowLayout{
     func collectionView(_ collectionView: UICollectionView,
                         layout collectionViewLayout: UICollectionViewLayout,
                         sizeForItemAt indexPath: IndexPath) -> CGSize {
-        
+
         if collectionView == categoriesListCollectionView {
-            return CGSize(width: 100, height: 25)
+            return CGSize(width: 120, height: 30)
         }
-        
-        let spacing: CGFloat = 3
-        let numberOfItemsPerRow: CGFloat = 2
-        let totalSpacing = spacing * (numberOfItemsPerRow + 1)
-        
-        let width = (collectionView.frame.width - totalSpacing) / numberOfItemsPerRow
-        let height = width * 1.5
-        
-        return CGSize(width: width, height: height)
+        let columns: CGFloat = 3
+        let spacing: CGFloat = 10
+        let horizontalInsets: CGFloat = 20
+        let availableWidth = collectionView.bounds.width - horizontalInsets - (spacing * (columns - 1))
+        let itemWidth = floor(availableWidth / columns)
+        let itemHeight = itemWidth * 1.5
+        return CGSize(width: itemWidth, height: itemHeight)
     }
-    
     // MARK: - Life Cycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        titleLabel.text = "Watch New Movies"
-        titleLabel.textColor = .yellow
-        titleLabel.font = UIFont.systemFont(ofSize: 20, weight: .bold)
+        setupUI()
         registerCollectionViewCells()
         setupCollectionViewDelegates()
-        setupMoviesCollectionViewLayout()
         bindViewModel()
+        setupMoviesCollectionViewLayout()
         ViewModel.fetchMovies(endpoint: .popular)
-        
+        ViewModel.bindSearch(
+            textPublisher: searchSubject.eraseToAnyPublisher()
+        )
+        ViewModel.fetchMovies(endpoint: .popular)
     }
-    
+    func setupUI(){
+        searchBar.delegate = self
+        moviesCollectionView.delaysContentTouches = false
+        categoriesListCollectionView.delaysContentTouches = false
+        let textField = searchBar.searchTextField
+        
+        textField.backgroundColor = UIColor(hex: "#3A3F47")
+        textField.textColor = .white
+        textField.tintColor = .white
+        textField.layer.cornerRadius = 10
+        textField.clipsToBounds = true
+        
+        searchBar.searchBarStyle = .minimal
+        searchBar.isTranslucent = true
+        searchBar.backgroundImage = UIImage()
+        searchBar.barTintColor = .clear
+        searchBar.backgroundColor = .clear
+        
+        textField.attributedPlaceholder = NSAttributedString(
+            string: "Search",
+            attributes: [.foregroundColor: UIColor.lightGray]
+        )
+        addKeyboardDoneButton()
+        categoriesListCollectionView.backgroundColor = UIColor(hex: "#242A32")
+        moviesCollectionView.backgroundColor = UIColor(hex: "#242A32")
+        view.backgroundColor = UIColor(hex: "#242A32")
+        titleLabel.text = "What do you want to watch?"
+        titleLabel.textColor = .white
+        titleLabel.font = .systemFont(ofSize: 18, weight: .bold)
+    }
+    private func addKeyboardDoneButton() {
+        let toolbar = UIToolbar(
+            frame: CGRect(
+                x: 0,
+                y: 0,
+                width: UIScreen.main.bounds.width,
+                height: 44
+            )
+        )
+        toolbar.barStyle = .black
+        toolbar.tintColor = UIColor(hex: "#0296E5")
+        let flexible = UIBarButtonItem(
+            barButtonSystemItem: .flexibleSpace,
+            target: nil,
+            action: nil
+        )
+        let done = UIBarButtonItem(
+            barButtonSystemItem: .done,
+            target: self,
+            action: #selector(dismissKeyboard)
+        )
+        toolbar.items = [flexible, done]
+        searchBar.searchTextField.inputAccessoryView = toolbar
+    }
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
+    }
     private func setupMoviesCollectionViewLayout() {
-        if let layout = moviesCollectionView.collectionViewLayout as? UICollectionViewFlowLayout {
-            layout.minimumInteritemSpacing = 3
-            layout.minimumLineSpacing = 10
-            layout.sectionInset = .zero
+        
+        guard let layout = moviesCollectionView.collectionViewLayout as? UICollectionViewFlowLayout else {
+            return
         }
+        layout.scrollDirection = .vertical
+        layout.minimumInteritemSpacing = 10
+        layout.minimumLineSpacing = 10
+        
+        layout.sectionInset = UIEdgeInsets(
+            top: 0,
+            left: 10,
+            bottom: 20,
+            right: 10
+        )
     }
     // MARK: - Setup Methods
     private func registerCollectionViewCells() {
@@ -72,7 +135,6 @@ class HomeViewController: UIViewController , UICollectionViewDelegateFlowLayout{
             forCellWithReuseIdentifier: "MoviesCollectionView"
         )
     }
-    
     private func setupCollectionViewDelegates() {
         categoriesListCollectionView.delegate = self
         categoriesListCollectionView.dataSource = self
@@ -83,42 +145,34 @@ class HomeViewController: UIViewController , UICollectionViewDelegateFlowLayout{
     private func bindViewModel() {
         ViewModel.$movies
             .receive(on: DispatchQueue.main)
+            .removeDuplicates(by: { $0.map(\.id) == $1.map(\.id) })
             .sink { [weak self] moviesList in
-                self?.movies = moviesList
-                self?.moviesCollectionView.reloadData()
+                guard let self = self else { return }
+                
+                self.movies = moviesList
+                self.moviesCollectionView.reloadData()
             }
             .store(in: &cancellables)
+    }
+    func goToDetails(movieId: Int) {
         
-        ViewModel.$errorMessage
-            .receive(on: DispatchQueue.main)
-            .sink { error in
-                if let error = error {
-                    print("Error: \(error)")
-                }
-            }
-            .store(in: &cancellables)
+        let vc = DetailsViewController(nibName: "DetailsViewController", bundle: nil)
+        let vm = DetailsViewModel(movieId: movieId)
+        vc.viewModel = vm
+        self.navigationController?.pushViewController(vc, animated: true)
     }
 }
-extension HomeViewController: UISearchBarDelegate {
-    
-    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-        ViewModel.filterMovies(text: searchText)
-        moviesCollectionView.reloadData()
-    }
-}
-
 // MARK: - UICollectionView Delegate & DataSource
 extension HomeViewController: UICollectionViewDelegate, UICollectionViewDataSource {
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        
         if collectionView == categoriesListCollectionView {
             let selectedCategory = ViewModel.getCategory(at: indexPath.row)
             ViewModel.fetchMovies(for: selectedCategory)
         }
-        
+
         if collectionView == moviesCollectionView {
             let selectedMovie = ViewModel.getMovie(at: indexPath.row)
-            coordinator?.goToDetails(movieId: selectedMovie.id)
+            goToDetails(movieId: selectedMovie.id)
         }
     }
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
@@ -131,7 +185,6 @@ extension HomeViewController: UICollectionViewDelegate, UICollectionViewDataSour
             return 0
         }
     }
-    
     func collectionView(_ collectionView: UICollectionView,
                         cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         switch collectionView {
@@ -156,6 +209,10 @@ extension HomeViewController: UICollectionViewDelegate, UICollectionViewDataSour
         }
     }
 }
-
+extension HomeViewController: UISearchBarDelegate {
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        searchSubject.send(searchText)
+    }
+}
 
 

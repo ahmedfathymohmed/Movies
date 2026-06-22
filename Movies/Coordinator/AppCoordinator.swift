@@ -17,25 +17,42 @@ class AppCoordinator {
         self.navigationController = navigationController
     }
     
+    // MARK: - Start
+    
     func start() {
         showMain()
     }
+    
+    // MARK: - Main Flow
+    
     func showMain() {
-        let vc = HomeViewController()
-        vc.coordinator = self
-        navigationController.setViewControllers([vc], animated: false)
+        let tabBar = MainTabBarController()
+        navigationController.setViewControllers([tabBar], animated: false)
     }
+    
+    // MARK: - Navigation
+    
     func goToDetails(movieId: Int) {
-        print("Navigating with movie ID: \(movieId)")
-        let vc = DetailsViewController()
+        
+        print(" Navigating with movie ID: \(movieId)")
+        
+        let vc = DetailsViewController(nibName: "DetailsViewController", bundle: nil)
         let vm = DetailsViewModel(movieId: movieId)
         
         vc.viewModel = vm
         vc.coordinator = self
+        
+       
         navigationController.pushViewController(vc, animated: true)
     }
-    func goBack() {
-        navigationController.popViewController(animated: true)
-    }
     
+    func goBack() {
+        guard let tabBar = navigationController.topViewController as? UITabBarController,
+              let nav = tabBar.selectedViewController as? UINavigationController else {
+            navigationController.popViewController(animated: true)
+            return
+        }
+        
+        nav.popViewController(animated: true)
+    }
 }

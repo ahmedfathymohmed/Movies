@@ -10,7 +10,7 @@ import UIKit
 class CategoryItemCollectionViewCell: UICollectionViewCell {
     
     @IBOutlet weak var titleLabel: UILabel!
-    @IBOutlet weak var contanierView: UIView!
+    @IBOutlet weak var containerView: UIView!
     
     
     override func awakeFromNib() {
@@ -19,7 +19,7 @@ class CategoryItemCollectionViewCell: UICollectionViewCell {
     }
     override var isSelected: Bool {
         didSet {
-            contanierView.backgroundColor = isSelected ? .yellow : .clear
+                    containerView.backgroundColor = isSelected ? UIColor(hex: "0296E5") : .clear
             titleLabel.textColor = isSelected ? .black : .white
         }
     }
@@ -29,12 +29,13 @@ class CategoryItemCollectionViewCell: UICollectionViewCell {
     }
     
     func setupCategoriesListCollectionView() {
-        contanierView.layer.borderColor = UIColor.yellow.cgColor
-        contanierView.layer.borderWidth = 1.0
-        contanierView.backgroundColor = .black
         
-        titleLabel.font = .systemFont(ofSize: 14, weight: .medium)
-        contanierView.layer.cornerRadius = 14
+        containerView.layer.borderColor = UIColor(hex: "0296E5").cgColor
+        containerView.layer.borderWidth = 1.0
+        containerView.backgroundColor = .black
+        
+        titleLabel.font = .systemFont(ofSize: 14, weight: .semibold)
+        containerView.layer.cornerRadius = 12
 
         titleLabel.textColor = .white
         titleLabel.textAlignment = .center

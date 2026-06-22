@@ -14,6 +14,10 @@ enum MovieEndpoint {
     case nowPlaying
     case upcoming
     case topRated
+    case reviews(id: Int)
+    case credits(id: Int)
+    case search(query: String)
+    case genres
 }
 extension MovieEndpoint {
     var path: String {
@@ -28,6 +32,14 @@ extension MovieEndpoint {
             return "/movie/upcoming"
         case .topRated:
             return "/movie/top_rated"
+        case .reviews(let id):
+            return "/movie/\(id)/reviews"
+        case .credits(let id):
+                    return "/movie/\(id)/credits"
+        case .search:
+            return "/search/movie"
+        case .genres:
+            return "/genre/movie/list"
         }
     }
 }

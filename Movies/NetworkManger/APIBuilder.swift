@@ -14,7 +14,19 @@ struct APIBuilder {
     
     static func buildRequest(endpoint: MovieEndpoint) -> URLRequest? {
         let urlString = baseURL + endpoint.path
-        guard let url = URL(string: urlString) else { return nil }
+//        guard let url = URL(string: urlString) else { return nil }
+        
+        guard var components = URLComponents(string: urlString) else { return nil }
+           
+           if case .search(let query) = endpoint {
+               components.queryItems = [
+                   URLQueryItem(name: "query", value: query)
+               ]
+           }
+           
+           guard let url = components.url else { return nil }
+        
+        
         
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
