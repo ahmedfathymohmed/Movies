@@ -5,6 +5,7 @@ A clean and modern iOS application for discovering movies, exploring details, re
 ---
 
 ## 📸 Screenshots
+<p align="center">
 <img src="Screenshots/1.png" width="200"/> 
 <img src="Screenshots/2.png" width="200"/>
 <img src="Screenshots/3.png" width="200"/>
@@ -16,6 +17,7 @@ A clean and modern iOS application for discovering movies, exploring details, re
 <img src="Screenshots/9.png" width="200"/>
 <img src="Screenshots/10.png" width="200"/>
 <img src="Screenshots/11.png" width="200"/>
+</p>
 
 ---
 
