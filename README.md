@@ -5,15 +5,17 @@ A clean and modern iOS application for discovering movies, exploring details, re
 ---
 
 ## 📸 Screenshots
-<img src="Screenshots/2.png" width="200"/> 
-<img src="Screenshots/2026-06-22 at 6.20.29 PM.png" width="200"/>
-<img src="Screenshots/2026-06-22 at 6.21.13 PM.png" width="200"/>
-<img src="Screenshots/2026-06-22 at 6.21.13 PM.png" width="200"/>
-<img src="Screenshots/2026-06-22 at 6.31.25 PM.png" width="200"/>
-<img src="Screenshots/2026-06-22 at 6.22.39 PM.png" width="200"/>
-<img src="Screenshots/2026-06-22 at 6.31.25 PM.png" width="200"/>
-<img src="Screenshots/2026-06-22 at 6.31.35 PM.png" width="200"/>
-<img src="Screenshots/2026-06-22 at 6.31.43 PM.png" width="200"/>
+<img src="Screenshots/1.png" width="200"/> 
+<img src="Screenshots/2.png" width="200"/>
+<img src="Screenshots/3.png" width="200"/>
+<img src="Screenshots/4.png" width="200"/>
+<img src="Screenshots/5.png" width="200"/>
+<img src="Screenshots/6.png" width="200"/>
+<img src="Screenshots/7.png" width="200"/>
+<img src="Screenshots/8.png" width="200"/>
+<img src="Screenshots/9.png" width="200"/>
+<img src="Screenshots/10.png" width="200"/>
+<img src="Screenshots/11.png" width="200"/>
 
 ---
 
